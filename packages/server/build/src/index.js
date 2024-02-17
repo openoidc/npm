@@ -1,25 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.doSomeStuff = void 0;
-console.log("Try npm run lint/fix!");
-var longString = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer ut aliquet diam.';
-var trailing = 'Semicolon';
-var why = { am: 'I tabbed?' };
-var iWish = "I didn't have a trailing space...";
-var sicilian = true;
-;
-var vizzini = (!!sicilian) ? !!!sicilian : sicilian;
-var re = /foo   bar/;
-function doSomeStuff(withThis, andThat, andThose) {
-    //function on one line
-    if (!Boolean(andThose.length)) {
-        return false;
-    }
-    console.log(withThis);
-    console.log(andThat);
-    console.dir(andThose);
-    console.log(longString, trailing, why, iWish, vizzini, re);
-    return;
-}
-exports.doSomeStuff = doSomeStuff;
-// TODO: more examples
+var env_1 = require("./env");
+var app_1 = require("./app/app");
+var logger_1 = require("./app/lib/logger");
+var Sentry = require("@sentry/node");
+process.on('uncaughtException', function (error) {
+    Sentry.captureException(error);
+    logger_1.default.error('server: uncaught exception', error);
+});
+process.on('unhandledRejection', function (reason, promise) {
+    Sentry.captureException(reason);
+    logger_1.default.error("server: unhandled promise rejection: ".concat(promise, ": ").concat(reason));
+});
+var server = app_1.default.listen(env_1.default.NX_PORT, function () {
+    logger_1.default.info("\uD83D\uDE80 API listening at http://localhost:".concat(server.address().port));
+});
+// Handle SIGTERM coming from ECS Fargate
+process.on('SIGTERM', function () { return server.close(); });
+server.on('error', function (err) { return logger_1.default.error('Server failed to start from main.ts', err); });

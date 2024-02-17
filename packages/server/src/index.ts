@@ -1,26 +1,30 @@
-console.log("Try npm run lint/fix!");
+import type {AddressInfo} from 'net';
+import env from 'env';
+import * as Sentry from '@sentry/node';
+import logger from 'lib/logger';
+import app from 'app';
 
-const longString = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer ut aliquet diam.';
+process.on('uncaughtException', error => {
+  Sentry.captureException(error);
+  logger.error('server: uncaught exception', error);
+});
 
-const trailing = 'Semicolon'
+process.on('unhandledRejection', (reason, promise) => {
+  Sentry.captureException(reason);
+  logger.error(`server: unhandled promise rejection: ${promise}: ${reason}`);
+});
 
-			const why={am:'I tabbed?'};
+const server = app.listen(env.PORT, () => {
+  logger.info(
+    `🚀 API listening at http://localhost:${
+      (server.address() as AddressInfo).port
+    }`
+  );
+});
 
-const iWish = "I didn't have a trailing space..."; 
+// Handle SIGTERM coming from ECS Fargate
+process.on('SIGTERM', () => server.close());
 
-const sicilian = true;;
-
-const vizzini = (!!sicilian) ? !!!sicilian : sicilian;
-
-const re = /foo   bar/;
-
-export function doSomeStuff(withThis: string, andThat: string, andThose: string[]) {
-    //function on one line
-    if(!Boolean(andThose.length)) {return false;}
-    console.log(withThis);
-    console.log(andThat);
-    console.dir(andThose);
-    console.log(longString, trailing, why, iWish, vizzini, re);
-    return;
-}
-// TODO: more examples
+server.on('error', err =>
+  logger.error('Server failed to start from index.ts', err)
+);
