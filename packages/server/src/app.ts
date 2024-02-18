@@ -1,4 +1,4 @@
-import type {NextFunction, Request, RequestHandler, Response} from 'express';
+import type {RequestHandler} from 'express';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -6,13 +6,19 @@ import * as Sentry from '@sentry/node';
 import * as SentryTracing from '@sentry/tracing';
 import env from 'env';
 
-import {defaultErrorHandler, authErrorHandler} from 'middleware';
+import {
+  defaultErrorHandler,
+  authErrorHandler,
+  authenticatedUser,
+} from 'middleware';
 /**
  * In Express 4.x, asynchronous errors are NOT automatically passed to next().  This middleware is a small
  * wrapper around Express that enables automatic async error handling
  */
 import 'express-async-errors';
 import logger from './lib/logger';
+import {ExpressAuth} from '@auth/express';
+import GitHub from '@auth/express/providers/github'
 
 const app = express();
 // put health check before maintenance and other middleware
@@ -63,7 +69,6 @@ app.use(express.json());
 // =========================================
 //                 API ⬇️
 // =========================================
-
 // Public routes
 // Keep this route public for Render health checks - https://render.com/docs/deploys#health-checks
 app.get('/v1', (_req, res) => {
@@ -73,6 +78,11 @@ app.get('/v1', (_req, res) => {
 app.get('/debug-sentry', () => {
   throw new Error('Server sentry is working correctly');
 });
+
+// Handle authentication with next-auth
+// ALL ROUTES BELOW THIS LINE ARE PROTECTED
+app.use('/auth/*', ExpressAuth({providers: [GitHub]}));
+app.use(authenticatedUser);
 
 // Sentry must be the *first* handler
 app.use(Sentry.Handlers.errorHandler());
